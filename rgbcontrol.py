@@ -12,15 +12,16 @@
 # sudo chmod 644 /etc/udev/rules.d/55-jtech.rules
 # sudo chown root. /etc/udev/rules.d/55-jtech.rules
 # sudo service udev restart
+# Then unplug and replug mouse
 
 import usb.core
 import usb.util
 import sys
+from tkinter import *
 
 # Config variables
 VENDOR = 0x1017
 PRODUCT = 0x900a
-
 
 # function to open USB connection to mouse
 def usbconnect():
@@ -29,29 +30,13 @@ def usbconnect():
     interface = 2
     if dev is None:
         raise ValueError("Device not found.  Please plug in mouse.")
-    else:
-        print("Mouse Found. Connecting...")
     if dev.is_kernel_driver_active(interface):
-        print("Kernel interface active, disconnecting it...")
         try:
             dev.detach_kernel_driver(interface)
         except usb.core.USBError as e:
             raise ValueError("Failed to disconnect: %s" % str(e))
     usb.util.claim_interface(dev, interface)
     dev.set_interface_altsetting(interface=interface, alternate_setting=0)
-
-##    for cfg in dev:
-##        sys.stdout.write(str(cfg.bConfigurationValue) + '\n')
-##        for intf in cfg:
-##            sys.stdout.write('\t' + \
-##                         str(intf.bInterfaceNumber) + \
-##                         ',' + \
-##                         str(intf.bAlternateSetting) + \
-##                         '\n')
-##            for ep in intf:
-##                sys.stdout.write('\t\t' + \
-##                             str(ep.bEndpointAddress) + \
-##                             '\n')
 
 # function to close the USB connection to the mouse
 def usbclose():
@@ -115,7 +100,6 @@ def closecontrol():
 # function to set solid color mode
 def solid(r,g,b):
     opencontrol()
-    print("Setting solid mode...")
     senddata([0x0c, 0x01, 0x80, 0x00, 0x00, 0x00, 0x00, 0x72])
     
     data2 = [0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
@@ -132,7 +116,7 @@ def solid(r,g,b):
     senddata([0x0d, 0x01, 0x05, 0x00, 0x00, 0x00, 0x00, 0xec])
     senddata([0x10, 0x01, 0x18, 0x00, 0x00, 0x00, 0x00, 0xd6])
 
-    print("Setting color...")
+    # set color
     if r > 51:
         r = 51
     if g > 51:
@@ -140,7 +124,7 @@ def solid(r,g,b):
     if b > 51:
         b = 51
     # 33 = 51dec = 256 actual. (not full 0-255). Probably power-related.
-    color1 = [0x00, 0x33, 0x00] # "warm-up" color
+    color1 = [r, g, b] # "warm-up" color (first couple seconds.  Not implepented as a feature)
     color2 = [r, g, b] # This is actual color Not valid: 7 1a 1f 22 24 26 2b 31
     color3 = [0x33, 0x00, 0x00] #                                       7 26 31 34 36 38 43 49
     color4 = [0x33, 0x00, 0x33] # Total number of available colors: 43 ^ 3 = 79507
@@ -211,13 +195,82 @@ def setdefault():
     dev.write(4,data6)
     print("###     RESET COMPLETE      ###")
 
+# function for rgb grid
+def rgb_grid(i,j):
+    # 4-bit rgb: 0, 17, 33, 51 are the available options
+    colors = [0x00, 0x11, 0x21, 0x32]
+    if i < 4 and j < 4:
+        red = colors[0]
+    elif i > 4 and j < 4:
+        red = colors[1]
+    elif i < 4 and j > 4:
+        red = colors[2]
+    else:
+        red = colors[3]
+    green = colors[i%4]
+    blue = colors[j%4]
+    return (red, green, blue)
+
+
+
 ## MAIN PROGRAM ##
+root = Tk()
+previewcolor = StringVar()
+mode = StringVar()
+
+def click(event):
+    xc = int(event.x / 40)
+    yc = int(event.y / 40)
+    if xc < 8:
+        (red, green, blue) = rgb_grid(xc,yc)
+        selection.configure(bg = "#%02x%02x%02x" % (red*5, green*5, blue*5))
+        if mode.get() == "0":
+            solid(0, 0, 0)
+        elif mode.get() == "1":
+            solid(red, green, blue)
+        elif mode.get() == "2":
+            solid(red, green, blue) # for now
+        root.update()
+
+def lightoff():  # radio button of "Off" selected
+    if mode.get() == "0":
+        solid(0, 0, 0)
+
+# make the gui
+canvas = Canvas(root, width=320, height=320)
+canvas.bind("<Button-1>", click) # bind mouse click
+
+# create grid of "4-bit" colors
+for i in range(0, 8):
+    for j in range(0, 8):
+        x0 = i * 40 + 2
+        y0 = j * 40 + 2
+        (red, green, blue) =  rgb_grid(i,j)
+        color = "#%02x%02x%02x" % (red*5, green*5, blue*5)
+        previewcolor.set(color)
+        canvas.create_rectangle(x0, y0, x0 + 36, y0 + 36, fill = color, width = 0)
+canvas.grid(row = 0, column = 0, rowspan = 6)
+
+# create "preview" pane
+selection = Label(root, bg=previewcolor.get(), padx = 75, pady = 75)
+selection.grid(row = 0, column = 1)
+
+# create mode selection radio buttons
+MODES = [("Off", "0"),("Solid","1"),("Breathe", "2")]
+mode.set("1")
+for text, temp in MODES:
+    button = Radiobutton(root, text=text, variable=mode, value=temp, indicatoron=0, command=lightoff)
+    button.grid(row = int(temp) + 2, column = 1, sticky = W+E+N+S)
+    
+
+# create exit button
+Button(root, text="Save & Exit", command=root.destroy).grid(row = 5, column = 1)
+
 # Try to connect to the mouse
 usbconnect()
 
-# 4-bit rgb: 0, 17, 33, 51
-solid(0,51,33)
-
+# main program loop
+root.mainloop()
 
 # Close connection
 usbclose()
