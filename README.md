@@ -1,7 +1,7 @@
 # rgbcontrol
 Program to control RGB LED lights on jtech-style vertical mouse (1017:900a)
 
-~Work in progress~
+*Work in progress*
 
 Currently implemented:
 Factory reset
