@@ -22,6 +22,11 @@ from tkinter import *
 # Config variables
 VENDOR = 0x1017
 PRODUCT = 0x900a
+red = 0x00
+green = 0x00
+blue = 0x00
+speed = 0x00
+direction = 0x00
 
 # function to open USB connection to mouse
 def usbconnect():
@@ -29,7 +34,7 @@ def usbconnect():
     dev = usb.core.find(idVendor=VENDOR, idProduct=PRODUCT)
     interface = 2
     if dev is None:
-        raise ValueError("Device not found.  Please plug in mouse.")
+        raise ValueError("Device not found.  Please plug in / replug mouse.")
     if dev.is_kernel_driver_active(interface):
         try:
             dev.detach_kernel_driver(interface)
@@ -64,6 +69,7 @@ def readdata(data):
         data_or_wLength=data
         )
 
+# function for printing the hex properly
 def hex2str(h):
 	string = "".join("%02x " % b for b in h)
 	return string
@@ -135,7 +141,128 @@ def solid(r,g,b):
     data4 = color1 + color2 + color3 + color4 + color5 + color6 + color7 + end
     dev.write(4,data4)
     closecontrol()
+    print(hex2str(color1))
 
+# function for "breathing" LEDs
+def breathe(r,g,b):
+    opencontrol()
+    senddata([0x0c, 0x01, 0x80, 0x00, 0x00, 0x00, 0x00, 0x72])
+    
+    data2 = [0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    dev.write(4,data2)
+    data3 = [0x0f, 0x04, 0x0a, 0x0a, 0x19, 0x19, 0x05, 0x02, \
+             0x0f, 0x00, 0x64, 0x64, 0x01, 0xc0, 0xf0, 0x03, \
+             0x01, 0x01, 0x64, 0x00, 0x02, 0x03, 0x04, 0x05, \
+             0x06, 0x07, 0x07, 0x07, 0x02, 0x03, 0x04, 0x05]
+    dev.write(4,data3)
+
+    senddata([0x0d, 0x02, 0x05, 0x00, 0x00, 0x00, 0x00, 0xeb])
+    senddata([0x10, 0x01, 0x18, 0x00, 0x00, 0x00, 0x00, 0xd6])
+
+    # set color
+    if r > 51:
+        r = 51
+    if g > 51:
+        g = 51
+    if b > 51:
+        b = 51
+    color1 = [r, g, b] # "warm-up" color (first couple seconds.  Not implemented as a feature)
+    color2 = [r, g, b] # This is actual color Not valid: 7 1a 1f 22 24 26 2b 31
+    color3 = [r, g, b] #                                 7 26 31 34 36 38 43 49
+    color4 = [r, g, b] # Total number of available colors: 43 ^ 3 = 79507
+    color5 = [0x00, 0x00, 0x11] # Sufficient number: 64
+    color6 = [r, g, b] # so 4 levels per color: off, 1/3, 2/3, 3/3. 
+    color7 = [r, g, b] # 0, 0x11, 0x21, 0x33: 0, 17, 33, 51
+    end = [r, g, b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    data4 = color1 + color2 + color3 + color4 + color5 + color6 + color7 + end
+    dev.write(4,data4)
+    closecontrol()
+    print(hex2str(color1))
+
+# function for "breathing" LEDs
+def neon(r,g,b):
+    opencontrol()
+    senddata([0x0c, 0x01, 0x80, 0x00, 0x00, 0x00, 0x00, 0x72])
+    
+    data2 = [0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    dev.write(4,data2)
+    data3 = [0x0f, 0x04, 0x0a, 0x0a, 0x19, 0x19, 0x05, 0x02, \
+             0x01, 0x02, 0x64, 0x64, 0x01, 0xc0, 0xf0, 0x03, \
+             0x01, 0x01, 0x64, 0x00, 0x02, 0x03, 0x04, 0x05, \
+             0x06, 0x07, 0x07, 0x07, 0x02, 0x03, 0x04, 0x05]
+    dev.write(4,data3)
+
+    senddata([0x0d, 0x04, 0x05, 0x05, 0x00, 0x00, 0x00, 0xe4])
+    senddata([0x10, 0x01, 0x18, 0x00, 0x00, 0x00, 0x00, 0xd6])
+
+    # set color
+    if r > 51:
+        r = 51
+    if g > 51:
+        g = 51
+    if b > 51:
+        b = 51
+    color1 = [r, g, b]
+    color2 = [r, g, b]
+    color3 = [0x33, 0x00, 0x00]
+    color4 = [0x33, 0x00, 0x33]
+    color5 = [0x00, 0x33, 0x33]
+    color6 = [0x33, 0x33, 0x00]
+    color7 = [0x33, 0x33, 0x33]
+    end = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    data4 = color1 + color2 + color3 + color4 + color5 + color6 + color7 + end
+    dev.write(4,data4)
+    closecontrol()
+    print(hex2str(color1))
+
+# function for "breathing" LEDs
+def floating(r,g,b,speed,direction):
+    opencontrol()
+    senddata([0x0c, 0x01, 0x80, 0x00, 0x00, 0x00, 0x00, 0x72])
+    
+    data2 = [0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    dev.write(4,data2)
+             #5=f,0c=m,14=s
+                   #1 = down, 0 = up
+    data3 = [0x0f, 0x04, 0x0a, 0x0a, 0x19, 0x19, 0x05, 0x03, \
+             0x05, 0x01, 0x64, 0x64, 0x01, 0xc0, 0xf0, 0x03, \
+             0x01, 0x01, 0x64, 0x00, 0x02, 0x03, 0x04, 0x05, \
+             0x06, 0x07, 0x07, 0x07, 0x02, 0x03, 0x04, 0x05]
+    dev.write(4,data3)
+                          #5=f,0c=m,14=s
+                                #1 = down, 0 = up
+    senddata([0x0d, 0x03, 0x05, 0x01, 0x00, 0x00, 0x00, 0xe4])
+    senddata([0x10, 0x01, 0x18, 0x00, 0x00, 0x00, 0x00, 0xd6])
+
+    # set color
+    if r > 51:
+        r = 51
+    if g > 51:
+        g = 51
+    if b > 51:
+        b = 51
+    color1 = [r, g, b]
+    color2 = [0x00, 0x00, 0x33]
+    color3 = [0x33, 0x00, 0x00]
+    color4 = [0x33, 0x00, 0x33]
+    color5 = [0x00, 0x33, 0x33]
+    color6 = [0x33, 0x33, 0x00]
+    color7 = [0x33, 0x33, 0x33]
+    end = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    data4 = color1 + color2 + color3 + color4 + color5 + color6 + color7 + end
+    dev.write(4,data4)
+    closecontrol()
+    print(hex2str(color1))
+    
 # function to set factory default
 def setdefault():
     print("### SETTING FACTORY DEFAULT ###")
@@ -158,7 +285,7 @@ def setdefault():
              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
     dev.write(4,data2)
-    # set mode                                         ,,,,
+
     data3 = [0x0f, 0x04, 0x0a, 0x0a, 0x19, 0x19, 0x05, 0x03, \
              0x05, 0x00, 0x64, 0x64, 0x01, 0xc0, 0xf0, 0x03, \
              0x01, 0x01, 0x64, 0x00, 0x02, 0x03, 0x04, 0x05, \
@@ -219,6 +346,7 @@ previewcolor = StringVar()
 mode = StringVar()
 
 def click(event):
+    global red, green, blue
     xc = int(event.x / 40)
     yc = int(event.y / 40)
     if xc < 8:
@@ -229,12 +357,26 @@ def click(event):
         elif mode.get() == "1":
             solid(red, green, blue)
         elif mode.get() == "2":
-            solid(red, green, blue) # for now
+            breathe(red, green, blue)
+        elif mode.get() == "3":
+            floating(red, green, blue)
+        elif mode.get() == "4":
+            neon(red, green, blue)
         root.update()
 
 def lightoff():  # radio button of "Off" selected
+    global red, green, blue
     if mode.get() == "0":
         solid(0, 0, 0)
+    elif mode.get() == "1":
+        solid(red, green, blue)
+    elif mode.get() == "2":
+        breathe(red, green, blue)
+    elif mode.get() == "3":
+        floating(red, green, blue)
+    elif mode.get() == "4":
+        neon(red, green, blue)
+    root.update()
 
 # make the gui
 canvas = Canvas(root, width=320, height=320)
@@ -249,14 +391,14 @@ for i in range(0, 8):
         color = "#%02x%02x%02x" % (red*5, green*5, blue*5)
         previewcolor.set(color)
         canvas.create_rectangle(x0, y0, x0 + 36, y0 + 36, fill = color, width = 0)
-canvas.grid(row = 0, column = 0, rowspan = 6)
+canvas.grid(row = 0, column = 0, rowspan = 11)
 
 # create "preview" pane
-selection = Label(root, bg=previewcolor.get(), padx = 75, pady = 75)
+selection = Label(root, bg=previewcolor.get(), padx = 50, pady = 50)
 selection.grid(row = 0, column = 1)
 
 # create mode selection radio buttons
-MODES = [("Off", "0"),("Solid","1"),("Breathe", "2")]
+MODES = [("Off", "0"),("Solid","1"),("Breathe", "2"),("Floating", "3"),("Neon","4")]
 mode.set("1")
 for text, temp in MODES:
     button = Radiobutton(root, text=text, variable=mode, value=temp, indicatoron=0, command=lightoff)
@@ -264,7 +406,7 @@ for text, temp in MODES:
     
 
 # create exit button
-Button(root, text="Save & Exit", command=root.destroy).grid(row = 5, column = 1)
+Button(root, text="Save & Exit", command=root.destroy).grid(row = 10, column = 1)
 
 # Try to connect to the mouse
 usbconnect()
